@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tap & Earn Rewards</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{margin:0;background:#fffbf0;font-family:Segoe UI;overflow-x:hidden}
+  #top{position:fixed;top:0;left:0;right:0;background:white;padding:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:99}
+  #pointBox{background:#e8f5e8;color:#2e7d32;padding:10px 20px;border-radius:30px;font-weight:bold}
+  #walletBtn{background:#2e7d32;color:white;padding:12px 24px;border-radius:30px;font-weight:bold}
+  #tapArea{width:300px;height:300px;margin:100px auto 30px;position:relative;background:white;border-radius:50%;box-shadow:0 20px 60px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  #coin{width:230px;height:230px;animation:float 4s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-25px)}}
+  .plus{position:absolute;font-size:50px;color:#ff6d00;font-weight:900;animation:fly 1s forwards}
+  @keyframes fly{to{transform:translateY(-180px) scale(0.5);opacity:0}}
+  #energyBar{width:90%;max-width:400px;height:32px;background:#e0e0e0;border-radius:16px;margin:20px auto;overflow:hidden;border:3px solid #c8e6c9}
+  #energyFill{height:100%;background:linear-gradient(90deg,#4caf50,#81c784);transition:width 0.4s}
+  #adBtn{background:#ff9800;color:white;padding:16px 40px;border-radius:30px;font-weight:bold;margin:30px auto;display:block;width:90%;max-width:400px}
+  .screen{position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:999;padding:20px;display:none;overflow-y:auto}
+  .close{position:absolute;top:15px;right:15px;background:#ddd;width:44px;height:44px;border-radius:50%;border:none;font-size:28px;cursor:pointer}
+  .tab-btn{display:inline-block;padding:12px 24px;margin:5px;background:#eee;border-radius:12px;font-weight:bold}
+  .tab-btn.active{background:#2e7d32;color:white}
+  .voucher-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+  .voucher{background:white;border-radius:24px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.15);text-align:center}
+  .voucher.locked{opacity:0.65}
+  .v-header{background:#212121;padding:20px 0}
+  .v-header img{height:48px}
+  .v-header span{display:block;color:white;font-size:18px;font-weight:bold;margin-top:8px}
+  .v-body{padding:20px}
+  .amount{font-size:42px;font-weight:900;color:#000}
+  .progress{height:10px;background:#eee;border-radius:5px;overflow:hidden;margin:15px 0}
+  .progress-fill{height:100%;background:#00bcd4;transition:all 0.5s}
+  .redeem-btn{background:#ccc;color:white;padding:14px;border:none;border-radius:12px;width:100%;font-size:18px;font-weight:bold;margin-top:15px}
+  .redeem-btn.active{background:#00bcd4;cursor:pointer}
+  .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:9999}
+  .modal-content{background:white;padding:30px;border-radius:20px;width:90%;max-width:400px;text-align:center}
+  .modal input{width:100%;padding:16px;margin:12px 0;border-radius:12px;border:2px solid #ddd;font-size:18px}
+  .modal button{background:#00bcd4;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-size:18px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <div><span id="name">Guest</span></div>
+  <div id="pointBox">Points: <span id="point">0</span></div>
+  <button id="walletBtn" onclick="openWallet()">Wallet</button>
+</div>
+
+<div id="tapArea" onclick="tap(event)">
+  <img id="coin" src="https://i.ibb.co.com/0jKk9nK/tap-coin-glow.png">
+  <div id="tapCount">0</div>
+</div>
+<div id="float"></div>
+
+<div id="energyBar"><div id="energyFill"></div></div>
+<div id="energyText">Energy: <span id="energyNow">10</span>/10</div>
+<button id="adBtn" onclick="watchAd()">Watch Ad & Recharge</button>
+
+<!-- Start Screen -->
+<div id="startScreen" class="screen" style="display:block;background:#fffbf0;padding-top:150px;text-align:center">
+  <h1 style="font-size:48px;color:#1976d2">Tap & Earn Rewards</h1>
+  <p style="font-size:22px;color:#555;margin:40px 0">Google Play • Litecoin • USDT BEP20</p>
+  <button onclick="startGame()" style="background:#4285f4;color:white;padding:22px 60px;border-radius:30px;font-size:24px;border:none">START TAPPING</button>
+</div>
+
+<!-- Wallet Screen -->
+<div id="walletScreen" class="screen">
+  <button class="close" onclick="closeAll()">X</button>
+  <h1 style="text-align:center;margin:50px 0 10px">Withdraw Rewards</h1>
+  <h2 style="text-align:center;color:#333;margin-bottom:30px">Points: <span id="wPoint">0</span></h2>
+
+  <div style="text-align:center;margin-bottom:20px">
+    <button class="tab-btn active" onclick="showTab('google')">Google Play</button>
+    <button class="tab-btn" onclick="showTab('ltc')">Litecoin</button>
+    <button class="tab-btn" onclick="showTab('usdt')">USDT BEP20</button>
+  </div>
+
+  <!-- Google Play -->
+  <div id="googleTab">
+    <div class="voucher-grid" id="vouchers"></div>
+  </div>
+
+  <!-- Litecoin -->
+  <div id="ltcTab" style="display:none">
+    <div style="background:#f8f9fa;padding:30px;border-radius:20px;text-align:center">
+      <h2>Litecoin Withdrawal</h2>
+      <p style="font-size:19px;font-weight:bold">3,2002500 Points = $0.1 LTC</p>
+      <input type="text" id="ltcAddr" placeholder="Enter LTC Address" style="width:100%;padding:18px;margin:15px 0;border-radius:16px;border:2px solid #ddd;font-size:18px">
+      <button onclick="withdrawLTC()" style="background:#ff6d00;color:white;padding:18px;border:none;border-radius:16px;width:100%;font-size:20px;font-weight:bold">Withdraw $0.1 LTC</button>
+    </div>
+  </div>
+
+  <!-- USDT BEP20 -->
+  <div id="usdtTab" style="display:none">
+    <div style="background:#f8f9fa;padding:30px;border-radius:20px;text-align:center">
+      <h2 style="color:#26a17b">USDT BEP20 Withdrawal</h2>
+      <div style="background:white;padding:20px;border-radius:16px;margin:15px 0;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+        <p style="font-size:18px;font-weight:bold">3,200 Points = $0.1 USDT</p>
+        <input type="text" id="usdtAddr1" placeholder="BEP20 Address (0x...)" style="width:100%;padding:16px;margin:12px 0;border-radius:12px;border:2px solid #ddd">
+        <button onclick="withdrawUSDT(0.1, 3200)" style="background:#26a17b;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-size:18px;font-weight:bold">Withdraw $0.1 USDT</button>
+      </div>
+      <div style="background:white;padding:20px;border-radius:16px;margin:15px 0;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+        <p style="font-size:18px;font-weight:bold">32,000 Points = $1 USDT</p>
+        <input type="text" id="usdtAddr2" placeholder="BEP20 Address (0x...)" style="width:100%;padding:16px;margin:12px 0;border-radius:12px;border:2px solid #ddd">
+        <button onclick="withdrawUSDT(1, 32000)" style="background:#26a17b;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-size:18px;font-weight:bold">Withdraw $1 USDT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Google Play Redeem Modal -->
+<div class="modal" id="redeemModal">
+  <div class="modal-content">
+    <h2>Redeem Google Play Gift Card</h2>
+    <input type="text" id="redeemName" placeholder="Full Name">
+    <input type="email" id="redeemEmail" placeholder="Gmail Address">
+    <button onclick="submitRedeem()">Submit Request</button>
+    <button onclick="document.getElementById('redeemModal').style.display='none'" style="background:#999;margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<script>
+Telegram.WebApp.ready(); Telegram.WebApp.expand();
+const user = Telegram.WebApp.initDataUnsafe.user || {};
+const userId = user.id ? user.id.toString() : "guest"+Date.now();
+document.getElementById("name").textContent = user.first_name || user.username || "Guest";
+
+const S = "point_"+userId;
+let points = parseInt(localStorage.getItem(S)) || 0;
+let energy = 10;
+let playing = false;
+let selectedINR = 0;
+
+const vouchers = [
+  { inr: 10, points: 3200 },
+  { inr: 20, points: 6400 },
+  { inr: 50, points: 16000 },
+  { inr: 100, points: 32000 }
+];
+
+function update(){document.getElementById("point").textContent=points.toLocaleString();document.getElementById("wPoint").textContent=points.toLocaleString();document.getElementById("tapCount").textContent=points.toLocaleString();document.getElementById("energyFill").style.width=(energy/10)*100+"%";document.getElementById("energyNow").textContent=energy;loadVouchers();showHistory();}
+function loadVouchers(){
+  let h="";vouchers.forEach(v=>{const p=Math.min((points/v.points)*100,100);const u=points>=v.points;
+    h+=`<div class="voucher ${u?'':'locked'}"><div class="v-header"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Play_Store_badge_EN.svg/512px-Google_Play_Store_badge_EN.svg.png"><span>Google Play ₹${v.inr}</span></div><div class="v-body"><div class="amount">₹${v.inr}</div><div class="progress"><div class="progress-fill" style="width:${p}%"></div></div><div class="progress-text">${points.toLocaleString()} / ${v.points.toLocaleString()} points</div><button class="redeem-btn ${u?'active':''}" ${u?`onclick="openRedeem(${v.inr})"`:'disabled'}>${u?'Redeem Now':'Locked'}</button></div></div>`;
+  });document.getElementById("vouchers").innerHTML=h;
+}
+function openRedeem(inr){selectedINR=inr;document.getElementById("redeemModal").style.display="flex";}
+function submitRedeem(){
+  const name=document.getElementById("redeemName").value.trim();
+  const email=document.getElementById("redeemEmail").value.trim();
+  if(!name||!email.includes("@gmail.com"))return Telegram.WebApp.showAlert("Valid Name & Gmail required!");
+  const deduct=selectedINR===10?3200:selectedINR===20?6400:selectedINR===50?16000:32000;
+  points-=deduct;localStorage.setItem(S,points);
+  saveRequest(`Google Play ₹${selectedINR}`,`${name} | ${email}`);
+  document.getElementById("redeemModal").style.display="none";
+  Telegram.WebApp.showAlert(`₹${selectedINR} Google Play request sent!`);
+  update();
+}
+function withdrawLTC(){
+  if(points<3200)return Telegram.WebApp.showAlert("Need 3,200 Points!");
+  const addr=document.getElementById("ltcAddr").value.trim();
+  if(!addr||addr.length<25)return Telegram.WebApp.showAlert("Enter valid LTC address!");
+  points-=3200;localStorage.setItem(S,points);
+  saveRequest("LTC $0.1",addr);
+  document.getElementById("ltcAddr").value="";
+  Telegram.WebApp.showAlert("$0.1 LTC request sent!");
+  update();
+}
+function withdrawUSDT(amount,req){
+  if(points<req)return Telegram.WebApp.showAlert(`Need ${req.toLocaleString()} Points!`);
+  const input=amount===0.1?document.getElementById("usdtAddr1"):document.getElementById("usdtAddr2");
+  const addr=input.value.trim();
+  if(!addr||!addr.startsWith("0x")||addr.length!==42)return Telegram.WebApp.showAlert("Invalid BEP20 address!");
+  points-=req;localStorage.setItem(S,points);
+  saveRequest(`USDT $${amount}`,addr,"BEP20");
+  input.value="";
+  Telegram.WebApp.showAlert(`$${amount} USDT request sent!`);
+  update();
+}
+function saveRequest(type,details,network=""){
+  const req={userId,type,details,network,time:new Date().toLocaleString("en-IN"),status:"pending"};
+  let all=JSON.parse(localStorage.getItem("withdraw_requests")||"[]");
+  all.push(req);localStorage.setItem("withdraw_requests",JSON.stringify(all));
+}
+function showTab(t){
+  ["google","ltc","usdt"].forEach(x=>document.getElementById(x+"Tab").style.display=x===t?"block":"none");
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+}
+function showHistory(){
+  const div=document.createElement("div");
+  div.innerHTML=`<div style="margin:30px 15px;background:#f8fff8;padding:20px;border-radius:16px;border:2px solid #4caf50"><h3 style="margin:0 0 15px;color:#1e7e34;text-align:center">Withdrawal History</h3><div id="hlist"></div></div>`;
+  if(document.getElementById("historyDiv"))document.getElementById("historyDiv").remove();
+  div.id="historyDiv";document.getElementById("walletScreen").appendChild(div);
+  const reqs=JSON.parse(localStorage.getItem("withdraw_requests")||"[]).filter(r=>r.userId===userId).reverse();
+  const list=document.getElementById("hlist");
+  if(reqs.length===0)list.innerHTML="<p style='text-align:center;color:#777'>No requests yet</p>";
+  else reqs.forEach(r=>{
+    const color=r.status==="success"?"#1e7e34":"#ff9800";
+    const text=r.status==="success"?"SUCCESS":"PENDING";
+    list.innerHTML+=`<div style="background:white;padding:14px;margin:8px 0;border-radius:12px;border-left:5px solid ${color};box-shadow:0 3px 10px rgba(0,0,0,0.1)"><b>${r.type}</b><br><small>${r.details} ${r.network?"("+r.network+")":""}</small><br><span style="color:${color};font-weight:bold">${text}</span> <span style="float:right;font-size:12px;color:#777">${r.time}</span></div>`;
+  });
+}
+function tap(e){if(!playing||energy<=0)return;energy--;points++;localStorage.setItem(S,points);const p=document.createElement("div");p.className="plus";p.textContent="+1";p.style.left=(e.touches?.[0].clientX||e.clientX)+"px";p.style.top=(e.touches?.[0].clientY||e.clientY)+"px";document.getElementById("float").appendChild(p);setTimeout(()=>p.remove(),1000);Telegram.WebApp.HapticFeedback.impactOccurred("medium");update();}
+function watchAd(){energy=10;update();Telegram.WebApp.showAlert("Energy Full!");}
+function startGame(){document.getElementById("startScreen").style.display="none";playing=true;update();}
+function openWallet(){closeAll();document.getElementById("walletScreen").style.display="block";update();}
+function closeAll(){document.querySelectorAll(".screen").forEach(s=>s.style.display="none");}
+update();
+</script>
+</body>
+</html>
